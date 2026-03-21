@@ -9,16 +9,18 @@
 
 set -euo pipefail
 
-declare -r ME="$( basename "${BASH_SOURCE[0]:-$0}" | sed 's/-/ /' )"
+declare -r HERE="$( dirname "$( readlink -f "${BASH_SOURCE[0]:-$0}" )" )"
+[[ '--setup' = "${1:-}" ]] && { shift; bash "${HERE}/setup.sh" "$@"; exit $?; }
 
 # @credit: https://github.com/ppo/bash-colors
 # @usage:  or copy & paste the `c()` function from:
 #          https://github.com/ppo/bash-colors/blob/master/bash-colors.sh#L3
 # shellcheck disable=SC2015
 declare -f c &>/dev/null || {
-  test -f "${HOME}/.marslo/bin/bash-colors.sh" && source "${HOME}/.marslo/bin/bash-colors.sh" || { c() { :; }; };
+  test -f "${HERE}/utils/bash-colors.sh" && source "${HERE}/utils/bash-colors.sh" || { c() { :; }; };
 }
 
+declare -r ME="$( basename "${BASH_SOURCE[0]:-$0}" | sed 's/-/ /' )"
 declare -r USAGE="NAME
   $(c Cs)${ME}$(c) - smartify create a new PR with fzf or open exists PR
 
