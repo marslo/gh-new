@@ -2,3 +2,7 @@
 	path = utils
 	url = ../../ppo/bash-colors
 	branch = master
+[submodule "etc"]
+	path = etc
+	url = ../gh-utility
+	branch = main

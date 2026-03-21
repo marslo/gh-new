@@ -60,6 +60,8 @@ source "${BASH_COMPLETION_USER_DIR:-${HOME}/.local/share/bash-completion}/gh-ext
 
 ## usage
 
+![help](./assets/gh-new-help.png)
+
 ```
 gh new [OPTIONS]
 ```
