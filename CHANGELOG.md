@@ -6,8 +6,11 @@
 
 ## [1.0.1](https://github.com/marslo/gh-new/compare/v1.0.0...v1.0.1) (2026-05-07)
 
-# 1.0.0 (2026-05-07)
+### Others
 
+* update the submodule (utils) for bash_completion enhancement ( [b99f4be](https://github.com/marslo/gh-utility/commit/b99f4be85fc6c60ff524b6c35dede3bcc8a38a44), [4052204](https://github.com/marslo/gh-new/commit/40522044685508659873cd541d1df7eb342e2a3e) )
+
+# 1.0.0 (2026-05-07)
 
 ### Features
 
