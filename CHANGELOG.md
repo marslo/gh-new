@@ -1,3 +1,9 @@
+## [1.0.2](https://github.com/marslo/gh-new/compare/v1.0.1...v1.0.2) (2026-05-07)
+
+### Others
+
+* add `--setup` params into help message ([3128304](https://github.com/marslo/gh-new/commit/31283040a5ec08bc089601a98caaf58576f9633d))
+
 ## [1.0.1](https://github.com/marslo/gh-new/compare/v1.0.0...v1.0.1) (2026-05-07)
 
 # 1.0.0 (2026-05-07)
