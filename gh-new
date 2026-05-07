@@ -4,7 +4,7 @@
 #     FileName : gh-new
 #       Author : marslo
 #      Created : 2026-01-23 11:52:14
-#   LastChange : 2026-03-20 16:24:19
+#   LastChange : 2026-05-07 02:54:31
 #=============================================================================
 
 set -euo pipefail
@@ -28,6 +28,9 @@ USAGE
   $(c Ys)\$ ${ME}$(c) $(c Wd)[$(c)$(c Gs)OPTIONS$(c)$(c Wd)]$(c)
 
 OPTIONS
+  $(c G)--setup$(c)              setup the gh-new script environment (e.g. feth submodules, set bash_completion, ...)
+  $(c G)--force$(c)              force to re-install the bash completion, only for $(c 0Gi)--setup$(c) option
+
   $(c G)-o$(c), $(c G)--open$(c)           open the created PR in the web browser
   $(c G)-l$(c), $(c G)--label$(c) $(c 0Mi)LABEL$(c)    add label(s) to the created PR
                        $(c 0i)comma-separated or repeated; $(c 0Mi)'auto-merge'$(c 0i) is auto-applied (if applicate)$(c)
