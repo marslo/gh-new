@@ -4,7 +4,7 @@
 #     FileName : gh-new
 #       Author : marslo
 #      Created : 2026-01-23 11:52:14
-#   LastChange : 2026-05-07 02:54:31
+#   LastChange : 2026-05-18 22:30:19
 #=============================================================================
 
 set -euo pipefail
@@ -13,11 +13,9 @@ declare -r HERE="$( dirname "$( readlink -f "${BASH_SOURCE[0]:-$0}" )" )"
 [[ '--setup' = "${1:-}" ]] && { shift; bash "${HERE}/setup.sh" "$@"; exit $?; }
 
 # @credit: https://github.com/ppo/bash-colors
-# @usage:  or copy & paste the `c()` function from:
-#          https://github.com/ppo/bash-colors/blob/master/bash-colors.sh#L3
-# shellcheck disable=SC2015
+# @usage:  or copy & paste the `c()` function from - https://github.com/ppo/bash-colors/blob/master/bash-colors.sh#L3
 declare -f c &>/dev/null || {
-  test -f "${HERE}/utils/bash-colors.sh" && source "${HERE}/utils/bash-colors.sh" || { c() { :; }; };
+  source "${HERE}/utils/bash-colors.sh" || { c() { :; }; };
 }
 
 declare -r ME="$( basename "${BASH_SOURCE[0]:-$0}" | sed 's/-/ /' )"
