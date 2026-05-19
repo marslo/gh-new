@@ -1,3 +1,20 @@
+## [1.0.3](https://github.com/marslo/gh-new/compare/v1.0.2...v1.0.3) (2026-05-19)
+
+### chore
+
+* chore: submodule update
+  see: marslo/gh-utility@e0aec1d
+
+* chore(submodule): submodule update;  using pre-commit workflow instead of pre-commit application, to disable PR auto creation
+
+### ci
+
+* ci: disable precommit automatic upgrade via PR
+
+### docs
+
+* docs: update the help screenshot
+
 ## [1.0.2](https://github.com/marslo/gh-new/compare/v1.0.1...v1.0.2) (2026-05-07)
 
 ### Others
