@@ -1,3 +1,18 @@
+## [1.0.4](https://github.com/marslo/gh-new/compare/v1.0.3...v1.0.4) (2026-05-21)
+
+### chore
+
+* chore: bump submodule new version - percentage-based dynamic preview window re-sizing in fzf
+* chore: bump submodule new version
+
+### ci
+
+* ci: fix the 'Node.js 20 actions are deprecated' issue in pre-commit workflow
+
+### docs
+
+* docs: add icon/badge in readme
+
 ## [1.0.3](https://github.com/marslo/gh-new/compare/v1.0.2...v1.0.3) (2026-05-19)
 
 ### chore
