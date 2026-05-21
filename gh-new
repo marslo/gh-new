@@ -4,7 +4,7 @@
 #     FileName : gh-new
 #       Author : marslo
 #      Created : 2026-01-23 11:52:14
-#   LastChange : 2026-05-18 22:30:19
+#   LastChange : 2026-05-21 06:13:42
 #=============================================================================
 
 set -euo pipefail
@@ -144,6 +144,9 @@ function prCmd() {
   local title=$(git log -1 --pretty=%s)
   local body=$(git log -1 --pretty=%B)
   test -z "${body}" && body="auto-generated PR from commit: '${title}'"
+
+  local url="${url:-https://jira.domain.com}"
+  body=$(echo "${body}" | sed -E "s|([A-Za-z]+-[0-9]+)|[\1](${url}/browse/\1)|g")
 
   # shellcheck disable=SC2034
   arrRef=( gh pr create
