@@ -1,3 +1,13 @@
+## [1.0.5](https://github.com/marslo/gh-new/compare/v1.0.4...v1.0.5) (2026-05-28)
+
+### fix
+
+* fix: fixed the reading JIRA_URL from environment variable
+
+### chore
+
+* chore: wrap JIRA-ID in PR body to URL
+
 ## [1.0.4](https://github.com/marslo/gh-new/compare/v1.0.3...v1.0.4) (2026-05-21)
 
 ### chore
