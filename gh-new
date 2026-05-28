@@ -145,7 +145,7 @@ function prCmd() {
   local body=$(git log -1 --pretty=%B)
   test -z "${body}" && body="auto-generated PR from commit: '${title}'"
 
-  local url="${url:-https://jira.domain.com}"
+  local url="${JIRA_URL:-https://jira.domain.com}"
   body=$(echo "${body}" | sed -E "s|([A-Za-z]+-[0-9]+)|[\1](${url}/browse/\1)|g")
 
   # shellcheck disable=SC2034
