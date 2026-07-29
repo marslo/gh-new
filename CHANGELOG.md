@@ -1,3 +1,9 @@
+## [1.0.6](https://github.com/marslo/gh-new/compare/v1.0.5...v1.0.6) (2026-07-29)
+
+### Bug Fixes
+
+* fix(push): skip pushing when working on the default branch (#3)
+
 ## [1.0.5](https://github.com/marslo/gh-new/compare/v1.0.4...v1.0.5) (2026-05-28)
 
 ### fix
