@@ -87,8 +87,14 @@ function show() {
 
 function isPushed() {
   local branch="${1:-}"
+  local main="${2:-}"
   test -z "${branch}" && show error 'branch name is required to push'
   local note=''
+
+  [[ "${branch}" == "${main}" ]] && {
+    show warning "cannot push to default branch \`$(c 0Yi)${main}$(c 0Wdi)\`"
+    return 0
+  }
 
   if ! git ls-remote --exit-code --heads origin "${branch}" >/dev/null 2>&1; then
     note="branch does not exist"
@@ -110,14 +116,16 @@ function prCmd() {
   # nameref
   local -n arrRef=$1
 
-  local current="$(git branch --show-current)"
-  test -z "${current}" && show error 'Not in a git repository or detached HEAD'
-  isPushed "${current}"
-  local gpreview="git show --color=always origin/{-1}"
   local main=''
   test -f "$(git rev-parse --absolute-git-dir)"/refs/remotes/origin/HEAD &&
     main="$(git symbolic-ref --short refs/remotes/origin/HEAD | sed 's|^origin/||')" ||
     main="$(gh repo view --json defaultBranchRef -q .defaultBranchRef.name)"
+
+  local current="$(git branch --show-current)"
+  test -z "${current}" && show error 'Not in a git repository or detached HEAD'
+  isPushed "${current}" "${main}"
+  local gpreview="git show --color=always origin/{-1}"
+
   local base=$({
                  echo "${main}";
                  git for-each-ref refs/remotes/origin --sort=-committerdate --format="%(refname:lstrip=3)"
