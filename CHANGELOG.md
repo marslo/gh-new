@@ -1,3 +1,13 @@
+## [1.1.0](https://github.com/marslo/gh-new/compare/v1.0.6...v1.1.0) (2026-10-16)
+
+### Features
+
+* **pr**, **body**: assemble PR body across the full commit range (#4)
+  - collect every commit in `origin/${base}..HEAD`, oldest first, joined by `---`, single commit gets no trailing separator
+  - strip the trailing ` (#NNN)` pr ref from each commit subject
+  - scope jira linkify to uppercase keys on a left word boundary so `xyz-1.2.3` is no longer mistaken for an issue id
+  - render the `--dryrun`/`--verbose` preview with selective `@Q` quoting so safe tokens stay bare and the command is copy-pasteable
+
 ## [1.0.6](https://github.com/marslo/gh-new/compare/v1.0.5...v1.0.6) (2026-07-29)
 
 ### Bug Fixes
