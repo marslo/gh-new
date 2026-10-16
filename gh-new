@@ -4,7 +4,7 @@
 #     FileName : gh-new
 #       Author : marslo
 #      Created : 2026-01-23 11:52:14
-#   LastChange : 2026-05-21 06:13:42
+#   LastChange : 2026-10-16 01:19:58
 #=============================================================================
 
 set -euo pipefail
@@ -150,11 +150,18 @@ function prCmd() {
 
   # TODO: using AI to generate better body
   local title=$(git log -1 --pretty=%s)
-  local body=$(git log -1 --pretty=%B)
+  # collect every commit between base and current, oldest first, full message;
+  # join bodies with --- separators, no trailing separator for a single commit; strip the trailing pr/revision ref ` (#123)` from each commit subject (first line only)
+  local -r prRe='1 s/[[:space:]]+\(#?[0-9]+\)[[:space:]]*$//'
+  local body='' sep='' sha
+  while IFS= read -r sha; do
+    body+="${sep}$(git log -1 --pretty=%B "${sha}" | sed -E "${prRe}")"
+    sep=$'\n\n---\n\n'
+  done < <( git rev-list --reverse "origin/${base}..HEAD" )
   test -z "${body}" && body="auto-generated PR from commit: '${title}'"
 
   local url="${JIRA_URL:-https://jira.domain.com}"
-  body=$(echo "${body}" | sed -E "s|([A-Za-z]+-[0-9]+)|[\1](${url}/browse/\1)|g")
+  body=$(echo "${body}" | sed -E "s#(^|[^A-Za-z0-9])([A-Z][A-Z0-9]+-[0-9]+)#\1[\2](${url}/browse/\2)#g")
 
   # shellcheck disable=SC2034
   arrRef=( gh pr create
@@ -219,7 +226,13 @@ function main() {
   prCmd CLI_CMD
 
   { "${DRYRUN}" || "${VERBOSE}"; } && {
-    local msg="command to be executed: \`$(c 0Cdi)\$ ${CLI_CMD[*]//$'\n'/\\\\n}${GH_OPTS[*]:+ ${GH_OPTS[*]}}$(c 0Wdi)\` ...$(c)"
+    # build a copy-pasteable preview: leave safe tokens bare, @Q-quote only args with shell-special chars (space, (), backtick, #, quote); keeps it readable
+    local -a preview=()
+    local arg
+    for arg in "${CLI_CMD[@]}" "${GH_OPTS[@]}"; do
+      if [[ "${arg}" =~ ^[A-Za-z0-9_./:=@%+,-]+$ ]]; then preview+=( "${arg}" ); else preview+=( "${arg@Q}" ); fi
+    done
+    local msg="command to be executed: \`$(c 0Cdi)\$ ${preview[*]}$(c 0Wdi)\` ...$(c)"
     # shellcheck disable=SC2015
     "${DRYRUN}" && { show dryrun "${msg}"; exit 0; } || show verbose "${msg}"
   }
