@@ -4,7 +4,7 @@
 #     FileName : gh-new
 #       Author : marslo
 #      Created : 2026-01-23 11:52:14
-#   LastChange : 2026-10-16 01:19:58
+#   LastChange : 2026-10-22 03:22:14
 #=============================================================================
 
 set -euo pipefail
@@ -36,6 +36,8 @@ OPTIONS
   $(c G)-a$(c), $(c G)--auto$(c)           automatically open the current PR if exists in current branch
   $(c G)-d$(c), $(c G)--draft$(c)          create the PR as a draft
   $(c G)-D$(c), $(c G)--dryrun$(c)         show the command to be executed, but do not run it
+  $(c G)--no-ai$(c)              do not summarize a multi-commit PR title via '$(c i)claude -p$(c)'; use the latest commit subject
+                       $(c 0i)env: $(c 0Mi)GH_NEW_AI_MODEL$(c 0i) ( default: haiku ), $(c 0Mi)GH_NEW_AI_TIMEOUT$(c 0i) ( seconds, default: 60 )$(c)
   $(c G)-h$(c), $(c G)--help$(c)           show this help message
   $(c B)--$(c) $(c 0Wdi)[$(c 0Ci)GH_OPTS$(c 0Wdi)]$(c)         pass all following arguments to the underlying '$(c i)gh pr create$(c)' command
 
@@ -60,6 +62,9 @@ declare -a GH_OPTS=()
 declare -a CLI_CMD=()
 declare -a LABELS=()
 declare OPEN=false
+declare AI=true
+# sed: strip the trailing PR ref ` (#123)` from the commit subject ( first line only )
+declare -r PR_RE='1 s/[[:space:]]+\(#?[0-9]+\)[[:space:]]*$//'
 
 function showHelp() { echo -e "${USAGE}"; exit 0; }
 function joinBy {
@@ -112,6 +117,83 @@ function isPushed() {
   } || :
 }
 
+# print the PR title summarized by `claude -p` from the commit messages; empty on any failure
+#   format : <type>[(<JIRA-ID>,...,<topic>,...)]: <summary> ( single line, <= 120 chars; JIRA IDs only when the commit scopes have any )
+#   env    : GH_NEW_AI_MODEL ( default: haiku ), GH_NEW_AI_TIMEOUT ( seconds, default: 60 )
+#   note   : call in a `$( ... )` subshell, the EXIT trap stays local there
+function aiTitle() {
+  local range="${1}"
+  local commits="${2}"
+  command -v claude >/dev/null 2>&1 || return 0
+
+  local model="${GH_NEW_AI_MODEL:-haiku}"
+  local secs="${GH_NEW_AI_TIMEOUT:-60}"
+  local -r maxLen=120
+  # JIRA IDs from the `type(scope)` of the commit subjects only, oldest first, deduplicated
+  local -a ids=()
+  mapfile -t ids < <( git log --reverse --pretty=%s "${range}" |
+                      sed -nE 's/^[a-z]+\(([^)]*)\)!?:.*/\1/p' |
+                      tr ',' '\n' | tr -d '[:blank:]' |
+                      grep -E '^[A-Z][A-Z0-9]+-[0-9]+$' | awk '!seen[$0]++' || :
+                    )
+  local idRule='- no JIRA IDs: the parentheses hold the topics only; drop the parentheses when there is no topic either'
+  test 0 -lt "${#ids[@]}" && idRule="- JIRA IDs: all of $( joinBy ',' "${ids[@]}" ), in this order, first inside the parentheses"
+  local rules="You write ONE pull-request title for the git commits given on stdin ( oldest first, separated by --- ).
+Rules:
+- output ONLY the title: concise, a single line, at most ${maxLen} characters in total; no quotes, no backticks, no markdown, no explanation
+- format: <type>(<JIRA-IDs>,<topics>): <summary>
+- <type>: feat, fix, chore, docs, refactor, perf, test, build, ci, style or revert; feat if any commit is a feat, otherwise fix if any is a fix, otherwise the dominant type
+- inside the parentheses: comma-separated, no spaces; JIRA IDs first, then the topics from the commit scopes, deduplicated
+${idRule}
+- <summary>: lowercase, imperative, covering all commits, no trailing period, no PR number such as (#123)
+- example: feat(ABC-123,api,cli): add token refresh to the api client and expose it in the cli"
+
+  # prompt only: no tools, no MCP servers, no user / project settings ( hooks, plugins, CLAUDE.md )
+  local -a aiCmd=( claude -p --model "${model}" --tools '' --strict-mcp-config --setting-sources ''
+                   --no-session-persistence --system-prompt "${rules}"
+                 )
+  local to="$( type -P timeout gtimeout | head -1 || : )"
+  # --foreground: stay in the caller's process group ( INT / TERM / HUP reach it, the EXIT trap runs at once )
+  test -n "${to}" && aiCmd=( "${to}" --foreground "${secs}" "${aiCmd[@]}" )
+
+  local cli="$( command -v claude )"
+  show info "generating PR title for $(c 0Mi)$(git rev-list --count "${range}")$(c 0Wdi) commits via \`$(c 0Yi)${cli/#${HOME}\//\~\/} --model ${model}$(c 0Wdi)\` ..."
+  local out='' err='' rc=0
+  local errFile="$( mktemp )"
+  # shellcheck disable=SC2064
+  trap "rm -f '${errFile}'" EXIT
+  trap 'exit 130' INT TERM HUP
+  out="$( printf '%s' "${commits}" | "${aiCmd[@]}" 2>"${errFile}" )" || rc=$?
+  err="$( tail -n 1 "${errFile}" )"
+  if test 0 -ne "${rc}"; then
+    # timeout exits 124; claude -p may print the error on stdout instead of stderr
+    test 124 -eq "${rc}" && err="timed out after ${secs}s" || err="exit ${rc}: ${err:-$( tail -n 1 <<< "${out}" )}"
+    show warning "claude failed ( ${err} ), fallback to the latest commit subject"
+    return 0
+  fi
+
+  # first valid title line: conventional-commit format, <= maxLen, every JIRA ID inside the scope
+  local -r wrapRe='^[`"'"'"'](.*)[`"'"'"']$'
+  local -r titleRe='^(feat|fix|chore|docs|refactor|perf|test|build|ci|style|revert)(\(([A-Za-z0-9._/-]+(,[A-Za-z0-9._/-]+)*)\))?!?: [^[:space:]]'
+  local line first='' scope id ok
+  while IFS= read -r line; do
+    # drop CR, trim spaces, unwrap surrounding backtick/quote
+    line="${line%$'\r'}"
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    [[ "${line}" =~ ${wrapRe} ]] && line="${BASH_REMATCH[1]}"
+    test -z "${line}" && continue
+    test -z "${first}" && first="${line}"
+    [[ "${line}" =~ ${titleRe} ]] && test "${#line}" -le "${maxLen}" || continue
+    scope=",${BASH_REMATCH[3]},"
+    ok=true
+    for id in "${ids[@]}"; do [[ "${scope}" == *",${id},"* ]] || ok=false; done
+    "${ok}" && { printf '%s' "${line}"; return 0; }
+  done <<< "${out}"
+
+  show warning "invalid AI title, fallback to the latest commit subject: \`${first}\`"
+}
+
 function prCmd() {
   # nameref
   local -n arrRef=$1
@@ -150,14 +232,17 @@ function prCmd() {
 
   # TODO: using AI to generate better body
   local title=$(git log -1 --pretty=%s)
-  # collect every commit between base and current, oldest first, full message;
-  # join bodies with --- separators, no trailing separator for a single commit; strip the trailing pr/revision ref ` (#123)` from each commit subject (first line only)
-  local -r prRe='1 s/[[:space:]]+\(#?[0-9]+\)[[:space:]]*$//'
+  # full message of every commit in `base..HEAD`, oldest first, joined by `---` ( no trailing separator ), PR ref stripped via `PR_RE`
   local body='' sep='' sha
   while IFS= read -r sha; do
-    body+="${sep}$(git log -1 --pretty=%B "${sha}" | sed -E "${prRe}")"
+    body+="${sep}$(git log -1 --pretty=%B "${sha}" | sed -E "${PR_RE}")"
     sep=$'\n\n---\n\n'
   done < <( git rev-list --reverse "origin/${base}..HEAD" )
+  # multi-commit PR: one title from all commits via `claude`; the latest subject on any failure
+  if "${AI}" && test "$( git rev-list --count "origin/${base}..HEAD" )" -gt 1; then
+    local aiOut="$(aiTitle "origin/${base}..HEAD" "${body}")"
+    test -n "${aiOut}" && title="${aiOut}" || :
+  fi
   test -z "${body}" && body="auto-generated PR from commit: '${title}'"
 
   local url="${JIRA_URL:-https://jira.domain.com}"
@@ -212,6 +297,7 @@ function main() {
       -d | --draft   ) GH_OPTS+=( --draft )        ; shift   ;;
       -v | --verbose ) VERBOSE=true                ; shift   ;;
       -D | --dryrun  ) DRYRUN=true                 ; shift   ;;
+      --no-ai        ) AI=false                    ; shift   ;;
       --             ) shift; GH_OPTS+=( "$@" )    ; break   ;;
       -h | --help    ) showHelp                              ;;
       *              ) show error "unknown argument: \`$1\`" ;;
@@ -226,7 +312,7 @@ function main() {
   prCmd CLI_CMD
 
   { "${DRYRUN}" || "${VERBOSE}"; } && {
-    # build a copy-pasteable preview: leave safe tokens bare, @Q-quote only args with shell-special chars (space, (), backtick, #, quote); keeps it readable
+    # copy-pasteable preview: safe tokens bare, @Q-quote only args with shell-special chars ( space, (), backtick, #, quote )
     local -a preview=()
     local arg
     for arg in "${CLI_CMD[@]}" "${GH_OPTS[@]}"; do
@@ -237,7 +323,7 @@ function main() {
     "${DRYRUN}" && { show dryrun "${msg}"; exit 0; } || show verbose "${msg}"
   }
 
-  # new pr
+  # new PR
   "${CLI_CMD[@]}" "${GH_OPTS[@]}"
 
   # add labels
