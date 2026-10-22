@@ -1,3 +1,14 @@
+## [1.2.0](https://github.com/marslo/gh-new/compare/v1.1.0...v1.2.0) (2026-10-22)
+
+### Features
+
+* **pr**, **title**, **ai**: summarize multi-commit PR titles via `claude -p` with fallback to the latest commit subject (#5)
+  - summarize all commits in `origin/<base>..HEAD` into one conventional-commit title
+  - require every JIRA ID from the commit subjects inside the title scope
+  - validate the AI output and fall back to the latest commit subject on failure, timeout or invalid format
+  - add `--no-ai` to skip, plus `GH_NEW_AI_MODEL` / `GH_NEW_AI_TIMEOUT` env overrides
+  - keep single-commit PRs and the PR body unchanged
+
 ## [1.1.0](https://github.com/marslo/gh-new/compare/v1.0.6...v1.1.0) (2026-10-16)
 
 ### Features
